@@ -1,0 +1,14 @@
+server {
+    listen {% if ssl %}443{% else %}80{% endif %};
+    server_name mailhog.{{ site_hostname }};
+
+    {% if ssl -%}
+      {{ ssl_common_params }}
+      ssl_certificate /etc/ssl/certs/staging.mailhog.isic-archive.com.pem;
+      ssl_certificate_key /etc/ssl/private/staging.mailhog.isic-archive.com.key;
+    {% endif %}
+
+    location / {
+        proxy_pass http://{{ mailhog_ui_bind_addr }};
+    }
+}

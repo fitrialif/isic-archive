@@ -40,3 +40,13 @@
     mode: 0644
   become: yes
   notify: Restart Nginx
+
+- name: Deploy MailHog config file
+  template:
+    src: mailhog.conf.j2
+    dest: "/etc/nginx/conf.d/mailhog.conf"
+    owner: root
+    group: root
+    mode: 0644
+  become: yes
+  notify: Restart Nginx

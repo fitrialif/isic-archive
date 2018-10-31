@@ -5,6 +5,7 @@
   vars:
       ansible_python_interpreter: "/usr/bin/python2.7"
       isic_archive_clone: false
+      mailhog_ui_bind_addr: "127.0.0.1:8025"
 
   # TODO: setup SSH reverse lookup
   # TODO: set hostname
