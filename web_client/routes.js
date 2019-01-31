@@ -1,8 +1,8 @@
 /* eslint-disable import/first */
 
-import events from 'girder/events';
-import {exposePluginConfig} from 'girder/utilities/PluginUtils';
-import router from 'girder/router';
+import events from '@girder/core/events';
+import {exposePluginConfig} from '@girder/core/utilities/PluginUtils';
+import router from '@girder/core/router';
 
 exposePluginConfig('isic_archive', 'plugins/isic_archive/config');
 
