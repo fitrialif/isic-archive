@@ -7,6 +7,7 @@ setup(name='isic-archive-tasks',
           'celery[redis]',
           'jsonpickle',
           'requests',
+          'requests_toolbelt',
           'sentry-sdk',
           'six'
       ])

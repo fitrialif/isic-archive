@@ -22,8 +22,9 @@ Vagrant.configure("2") do |config|
 
   config.vm.network :private_network, ip: "172.16.0.10"
   config.vm.post_up_message = <<-eos
-ISIC Archive is running at http://isic-archive.test
+ISIC Archive is running at http://isic-archive.test/admin
 MailHog is running at http://isic-archive.test:8025
+Flower is running at http://isic-archive.test:5555
 S3 (via localstack) is running at http://isic-archive.test:4572
 eos
 

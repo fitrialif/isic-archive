@@ -1,0 +1,17 @@
+ARCHIVE_API_URL={{ archive_api_url }}
+SENTRY_DSN={{ sentry_dsn }}
+SENTRY_ENVIRONMENT={{ sentry_environment }}
+
+CELERY_BROKER_URL={{ celery_broker_url }}
+CELERY_RESULT_BACKEND={{ celery_result_backend }}
+
+CELERY_BIN="{{ celery_bin }}"
+CELERY_APP="isic_archive_tasks"
+
+CELERYBEAT_OPTS=""
+
+CELERYBEAT_SCHEDULE_FILE="/var/run/celery/celerybeat.schedule"
+
+CELERYBEAT_PID_FILE="/var/run/celery/celerybeat.pid"
+CELERYBEAT_LOG_FILE="/var/log/celery/celerybeat.log"
+CELERYBEAT_LOG_LEVEL="INFO"

@@ -41,8 +41,7 @@ class CredentialedGirderTask(Task):
         super(CredentialedGirderTask, self).__call__(*args, **kwargs)
 
 
-app = Celery(broker='redis://localhost', backend='redis://localhost',
-             task_cls=CredentialedGirderTask)
+app = Celery(task_cls=CredentialedGirderTask)
 
 
 class CeleryAppConfig(object):
@@ -53,7 +52,7 @@ class CeleryAppConfig(object):
 app.config_from_object(CeleryAppConfig())
 
 task_logger = get_task_logger(__name__)
-sentry_sdk.init()
+sentry_sdk.init(environment=os.getenv('SENTRY_ENVIRONMENT'))
 
 
 @app.on_after_configure.connect
