@@ -16,17 +16,39 @@
       isic_email_host: "http://isic-archive.test"
       isic_smtp_host: "localhost"
       isic_smtp_port: "1025"
-
-    - role: nginx
-      site_hostname: isic-archive.test
-      upstream_proxy: true
       # S3 development is mocked with localstack
       isic_upload_bucket_name: "test-upload-bucket"
       isic_upload_role_arn: "fake-arn"
 
+    - role: nginx
+      site_hostname: isic-archive.test
+      upstream_proxy: true
+
     - role: localstack
+      isic_upload_bucket_name: "test-upload-bucket"
+      isic_upload_role_arn: "fake-arn"
+      localstack_data_dir: "{{ ansible_user_dir }}/localstack-data"
+
+    - role: celery
+      archive_api_url: "http://isic-archive.test/api/v1"
+      celery_bin: "{{ python_dist_path }}/bin/celery"
+      celery_concurrency: 1
+      celery_user: vagrant
 
   post_tasks:
+    - name: Install redis
+      apt:
+        name: redis
+      become: true
+
+    # The celery user needs to be able to write to the assetstore via tasks
+    - name: Add celery user to vagrant group
+      user:
+        name: celery
+        groups: vagrant
+        append: true
+      become: true
+
     - name: Activate virtualenv on login
       lineinfile:
         line: 'source {{ python_dist_path }}/bin/activate'
