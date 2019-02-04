@@ -6,7 +6,9 @@ developmentMode = getConfig()['server']['mode'] == 'development'
 
 if developmentMode:
     s3Kwargs = {
-        'endpoint_url': 'http://localhost:4572'
+        'endpoint_url': 'http://localhost:4572',
+        'aws_access_key_id': 'foo',
+        'aws_secret_access_key': 'bar'
     }
 
 session = Session()
