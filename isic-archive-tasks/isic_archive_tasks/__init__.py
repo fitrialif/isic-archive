@@ -74,23 +74,19 @@ def maybeSendIngestionNotifications():
         if not Batch().hasImagesPendingIngest(batch):
             # TODO: Move sorting to templating since it's a rendering concern?
             failedImages = list(Image().find({
-                '$and': [
-                    {'meta.batchId': batch['_id']},
-                    {'$or': [
+                    'meta.batchId': batch['_id'],
+                    '$or': [
                         {'ingestionState.largeImage': False},
                         {'ingestionState.superpixelMask': False}
                     ]
-                    }
-                ]
+
             }, fields=['privateMeta.originalFilename']).sort(
                 'privateMeta.originalFilename',
                 pymongo.ASCENDING
             ))
             skippedFilenames = list(Image().find({
-                '$and': [
-                    {'meta.batchId': batch['_id']},
-                    {'readable': False}
-                ]
+                    'meta.batchId': batch['_id'],
+                    'readable': False
             }, fields=['privateMeta.originalFilename']).sort(
                 'privateMeta.originalFilename',
                 pymongo.ASCENDING
