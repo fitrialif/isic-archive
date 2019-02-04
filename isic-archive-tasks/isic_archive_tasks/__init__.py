@@ -1,5 +1,5 @@
 from celery import Celery
-from celery.signals import worker_ready
+from celery.signals import worker_ready, worker_process_init
 from celery.utils.log import get_task_logger
 import jsonpickle
 from kombu.serialization import register
@@ -30,7 +30,8 @@ def setupPeriodicTasks(sender, **kwargs):
     sender.add_periodic_task(30, maybeSendIngestionNotifications.s(),
                              name='Send any necessary notifications for ingested batches.')
 
-@app.on_after_configure.connect
+
+@worker_process_init.connect
 def fixGirderImports(sender, **kwargs):
     from girder.utility.server import configureServer
     configureServer(curConfig={
@@ -136,3 +137,6 @@ def sendIngestionNotification(batchId, failedImages, skippedFilenames):
         templateFilename=templateFilename,
         templateParams=params,
         subject=subject)
+
+from .image import ingestImage, markImageIngested, generateSuperpixels, generateLargeImage
+from .zip import ingestBatchFromZipfile
