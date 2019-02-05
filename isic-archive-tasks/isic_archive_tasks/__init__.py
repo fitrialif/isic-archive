@@ -1,17 +1,48 @@
-from celery import Celery
-from celery.signals import worker_ready, worker_process_init
+import os
+
+from celery import Celery, Task
+from celery.signals import worker_process_init
 from celery.utils.log import get_task_logger
 import jsonpickle
+from girder.models.setting import Setting
 from kombu.serialization import register
-import pymongo
 import sentry_sdk
 
-from girder.constants import TokenScope
+from girder.constants import TokenScope, SettingKey
 from girder.models.token import Token
-from girder.models.user import User
-from girder.utility import mail_utils
+from requests_toolbelt.sessions import BaseUrlSession
 
-app = Celery()
+
+class CredentialedGirderTask(Task):
+    """
+    Provide a task with a requests session via self.session, this is the default task.
+
+    This base task should always be used in conjunction with setting bind=True in order
+    to access the session.
+    """
+    def __call__(self, *args, **kwargs):
+        """
+        The child class overrides run, so __call__ must be used to hook in before a task
+        is executed.
+        """
+        from girder.plugins.isic_archive.provision_utility import getAdminUser
+        # TODO: Revoke token in post task signal
+        self.token = Token().createToken(user=getAdminUser(), days=1,
+                                         scope=[TokenScope.DATA_READ, TokenScope.DATA_WRITE])
+        self.session = BaseUrlSession(
+            os.getenv(
+                'ARCHIVE_API_URL',
+                Setting().get(SettingKey.SERVER_ROOT)
+            ).rstrip('/') + '/')
+        self.session.headers.update({
+            'Girder-Token': str(self.token['_id'])
+        })
+
+        super(CredentialedGirderTask, self).__call__(*args, **kwargs)
+
+
+app = Celery(broker='redis://localhost', backend='redis://localhost',
+             task_cls=CredentialedGirderTask)
 
 
 class CeleryAppConfig(object):
@@ -42,97 +73,10 @@ def fixGirderImports(sender, **kwargs):
     })
 
 
-class CredentialedGirderTask(app.Task):
-    """
-    Provide a celery task with access to a Girder token via self.token.
-
-    This base task should always be used in conjunction with setting bind=True in order
-    to access the token.
-    """
-    def __call__(self, *args, **kwargs):
-        """
-        The child class overrides run, so __call__ must be used to hook in before a task
-        is executed.
-        """
-        from girder.plugins.isic_archive.provision_utility import getAdminUser
-        self.token = Token().createToken(user=getAdminUser(), days=1,
-                                         scope=[TokenScope.DATA_READ, TokenScope.DATA_WRITE])
-        self.token = str(self.token['_id'])
-
-        super(CredentialedGirderTask, self).__call__(*args, **kwargs)
-
-
 register('jsonpickle', jsonpickle.encode, jsonpickle.decode, content_type='application/json',
          content_encoding='utf-8')
 
 
-@app.task()
-def maybeSendIngestionNotifications():
-    from girder.plugins.isic_archive.models.batch import Batch
-    from girder.plugins.isic_archive.models.image import Image
-    for batch in Batch().find({'ingestStatus': 'extracted'}):
-        if not Batch().hasImagesPendingIngest(batch):
-            # TODO: Move sorting to templating since it's a rendering concern?
-            failedImages = list(Image().find({
-                    'meta.batchId': batch['_id'],
-                    '$or': [
-                        {'ingestionState.largeImage': False},
-                        {'ingestionState.superpixelMask': False}
-                    ]
-
-            }, fields=['privateMeta.originalFilename']).sort(
-                'privateMeta.originalFilename',
-                pymongo.ASCENDING
-            ))
-            skippedFilenames = list(Image().find({
-                    'meta.batchId': batch['_id'],
-                    'readable': False
-            }, fields=['privateMeta.originalFilename']).sort(
-                'privateMeta.originalFilename',
-                pymongo.ASCENDING
-            ))
-
-            sendIngestionNotification.delay(batch['_id'], failedImages, skippedFilenames)
-            batch['ingestStatus'] = 'notified'
-            Batch().save(batch)
-
-
-@app.task()
-def sendIngestionNotification(batchId, failedImages, skippedFilenames):
-    from girder.plugins.isic_archive.models.batch import Batch
-    from girder.plugins.isic_archive.models.dataset import Dataset
-    from girder.plugins.isic_archive.utility.mail_utils import sendEmail, sendEmailToGroup
-    batch = Batch().load(batchId)
-    dataset = Dataset().load(batch['datasetId'], force=True)
-    user = User().load(batch['creatorId'], force=True)
-    host = mail_utils.getEmailUrlPrefix()
-    # TODO: The email should gracefully handle the situation where failedImages or skippedFilenames
-    # has an excessive amount of items.
-    params = {
-        'isOriginalUploader': True,
-        'host': host,
-        'dataset': dataset,
-        # We intentionally leak full user details here, even though all
-        # email recipients may not have access permissions to the user
-        'user': user,
-        'batch': batch,
-        'failedImages': failedImages,
-        'skippedFilenames': skippedFilenames
-    }
-    subject = 'ISIC Archive: Dataset Upload Confirmation'
-    templateFilename = 'ingestDatasetConfirmation.mako'
-
-    # Mail user
-    html = mail_utils.renderTemplate(templateFilename, params)
-    sendEmail(to=user['email'], subject=subject, text=html)
-
-    # Mail 'Dataset QC Reviewers' group
-    params['isOriginalUploader'] = False
-    sendEmailToGroup(
-        groupName='Dataset QC Reviewers',
-        templateFilename=templateFilename,
-        templateParams=params,
-        subject=subject)
-
 from .image import ingestImage, markImageIngested, generateSuperpixels, generateLargeImage
+from .notification import maybeSendIngestionNotifications, sendIngestionNotification
 from .zip import ingestBatchFromZipfile

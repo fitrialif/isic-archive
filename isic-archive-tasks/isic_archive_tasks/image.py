@@ -60,7 +60,7 @@ def markImageIngested(results, imageId):
     Image().save(image)
 
 
-@app.task(bind=True, base=CredentialedGirderTask)
+@app.task(bind=True)
 def generateSuperpixels(self, imageId):
     try:
         from girder.plugins.isic_archive.models.image import Image
@@ -69,10 +69,8 @@ def generateSuperpixels(self, imageId):
         image = Image().load(imageId, force=True)
         imageFile = Image().originalFile(image)
 
-        originalFileStreamResponse = requests.get(
-            'http://isic-archive.test/api/v1/file/%s/download' % imageFile['_id'], headers={
-                'Girder-Token': self.token
-            })
+        originalFileStreamResponse = self.session.get(
+            'file/%s/download' % imageFile['_id'])
         originalFileStreamResponse.raise_for_status()
         originalFileStreamResponse = io.BytesIO(originalFileStreamResponse.content)
 
@@ -83,15 +81,13 @@ def generateSuperpixels(self, imageId):
         superpixelsEncodedStream = ScikitSegmentationHelper.writeImage(
             superpixelsData, 'png')
 
-        uploadSuperpixelsResponse = requests.post('http://isic-archive.test/api/v1/file', params={
+        uploadSuperpixelsResponse = self.session.post('file', params={
             'parentType': 'item',
             'parentId': imageId,
             'name': '%s_superpixels_v%s.png' % (image['name'], SUPERPIXEL_VERSION),
             'size': len(superpixelsEncodedStream.getvalue()),
             'mimeType': 'image/png'
-        }, data=superpixelsEncodedStream.getvalue(), headers={
-            'Girder-Token': self.token
-        })
+        }, data=superpixelsEncodedStream.getvalue())
         uploadSuperpixelsResponse.raise_for_status()
 
         superpixelsFile = File().load(uploadSuperpixelsResponse.json()['_id'], force=True)
@@ -112,7 +108,7 @@ def generateSuperpixels(self, imageId):
         Image().save(image)
 
 
-@app.task(bind=True, base=CredentialedGirderTask)
+@app.task(bind=True)
 def generateLargeImage(self, imageId):
     from girder.plugins.isic_archive.models.image import Image
     from girder.plugins.large_image.models.image_item import ImageItem
@@ -121,10 +117,8 @@ def generateLargeImage(self, imageId):
 
     # todo url
     try:
-        originalFileStreamResponse = requests.get(
-            'http://isic-archive.test/api/v1/file/%s/download' % imageFile['_id'], headers={
-                'Girder-Token': self.token
-            }, stream=True)
+        originalFileStreamResponse = self.session.get(
+            'file/%s/download' % imageFile['_id'], stream=True)
         originalFileStreamResponse.raise_for_status()
 
         with tempfile.NamedTemporaryFile() as inputFile, \
@@ -135,17 +129,15 @@ def generateLargeImage(self, imageId):
             vips_tiffsave(inputFile.name, outputFile.name)
 
             with open(outputFile.name) as vipsResultFile:
-                uploadLargeImageResp = requests.post(
-                    'http://isic-archive.test/api/v1/file',
+                uploadLargeImageResp = self.session.post(
+                    'file',
                     params={
                         'parentType': 'item',
                         'parentId': imageId,
                         'name': imageItem['name'] + '.tiff',
                         'size': os.path.getsize(outputFile.name)
                     }, data=vipsResultFile.read(),
-                    headers={
-                        'Girder-Token': self.token
-                    })
+                )
                 uploadLargeImageResp.raise_for_status()
     except Exception:
         logger.exception('Failed to create large image')

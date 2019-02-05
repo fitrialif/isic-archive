@@ -14,7 +14,7 @@ from isic_archive_tasks.image import ingestImage
 
 logger = get_task_logger(__name__)
 
-@app.task(bind=True, base=CredentialedGirderTask)
+@app.task(bind=True)
 def ingestBatchFromZipfile(self, batchId):
     """
     Ingest images from a ZIP file into a dataset.
@@ -101,13 +101,13 @@ def ingestBatchFromZipfile(self, batchId):
                     )
 
                     try:
-                        resp = requests.post('http://isic-archive.test/api/v1/file', params={
+                        resp = self.session.post('file', params={
                             'parentType': 'item',
                             'parentId': image['_id'],
                             'name': originalFileName,
                             'size': os.path.getsize(originalFilePath),
                             'mimeType': mimetypes.guess_type(originalFileName)[0]
-                        }, data=originalFileStream, headers={'Girder-Token': self.token})
+                        }, data=originalFileStream)
                         resp.raise_for_status()
                     except Exception:
                         logger.exception('An individual image failed to be extracted')
