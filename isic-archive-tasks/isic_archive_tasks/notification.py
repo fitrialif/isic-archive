@@ -17,7 +17,6 @@ def maybeSendIngestionNotifications():
                     {'ingestionState.largeImage': False},
                     {'ingestionState.superpixelMask': False}
                 ]
-
             }, fields=['privateMeta.originalFilename']).sort(
                 'privateMeta.originalFilename',
                 pymongo.ASCENDING

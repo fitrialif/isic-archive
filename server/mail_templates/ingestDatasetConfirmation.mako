@@ -1,6 +1,6 @@
 <%include file="_header.mako"/>
 
-% if group:
+% if not isOriginalUploader:
 <div style="font-size: 18px; font-weight: bold; color: #009933; margin-bottom: 12px;">
 A user added a ZIP image batch to the ISIC Archive.
 </div>
