@@ -28,7 +28,6 @@ from girder.api.v1 import resource
 from girder.utility import mail_utils
 from girder.utility.plugin_utilities import registerPluginWebroot
 from girder.utility.server import staticFile
-from girder.utility.webroot import WebrootBase
 
 from . import api
 # Import settings for side effects
@@ -145,24 +144,34 @@ def load(info):
         os.path.join(info['pluginRootDir'], 'server', 'license_templates'),
         prepend=True)
 
-    externalWebroot = WebrootBase(os.path.join(info['pluginRootDir'], 'server', 'webroot.mako'))
-    externalWebroot.updateHtmlVars({
-        'apiRoot': '/api/v1',
-        'staticRoot': '/static',
-        'title': 'ISIC Archive'
-    })
-    registerPluginWebroot(externalWebroot, info['name'])
+    # info['config']['/'] = {
+    #     'tools.staticfile.on': True,
+    #     'tools.staticfile.filename': os.path.join(
+    #         info['pluginRootDir'],
+    #         'isic-archive-gui',
+    #         'dist',
+    #         'integration.html'
+    #     )
+    # }
 
-    integrationWebroot = WebrootBase(os.path.join(
-        info['pluginRootDir'], 'server', 'webroot_integration.mako'))
-    integrationWebroot.updateHtmlVars(externalWebroot.vars)
-    registerPluginWebroot(integrationWebroot, info['name'] + '_integration')
+    # info['config']['/admin2'] = {
+    #     'tools.staticdir.on': True,
+    #     'tools.staticdir.dir': os.path.join(
+    #         info['pluginRootDir'],
+    #         'isic-archive-gui',
+    #         'dist'
+    #     ),
+    #     'tools.staticdir.index': 'admin.html'
+    # }
+
 
     # add static file serving
     info['config']['/uda'] = {
         'tools.staticdir.on': 'True',
         'tools.staticdir.dir': os.path.join(info['pluginRootDir'], 'custom')
     }
+
+    print info['config']
 
     # add dynamic root routes
     # root endpoints -> where a user may go and expect a UI

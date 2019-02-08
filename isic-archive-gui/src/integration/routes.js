@@ -25,6 +25,36 @@ function navigateToIfLoggedIn(View, settings) {
     }
 }
 
+import CreateDatasetRequestView from '../Datasets/CreateDatasetRequestView';
+function navigateToIfCanCreateDataset(View, settings) {
+    // Users must:
+    //  (1) Be logged in
+    //  (2) Accept the TOS
+    //  (3) Request and receive create dataset access
+    // before being able to see the create dataset view
+    let currentUser = getCurrentUser();
+    if (!currentUser) {
+        events.trigger('g:loginUi');
+    } else if (!currentUser.canAcceptTerms()) {
+        navigateTo(TermsAcceptanceView);
+    } else if (!DatasetModel.canCreate()) {
+        navigateTo(CreateDatasetRequestView);
+    } else {
+        navigateTo(View, settings);
+    }
+}
+
+// Front page
+router.route('', 'index', () => {
+    window.location.replace('https://www.isic-archive.com/');
+});
+
+// Literature page
+import LiteratureView from '../Literature/LiteratureView';
+router.route('literature', 'literature', () => {
+    navigateTo(LiteratureView);
+});
+
 // User management
 import UserModel from '../models/UserModel';
 import UserAccountView from '@girder/core/views/body/UserAccountView';
@@ -66,9 +96,6 @@ import {showAlertDialog} from '../common/utilities';
 router.route('user/:id/rsvp/:token', 'rsvpUser', (id, token) => {
     UserModel.fromTemporaryToken(id, token)
         .done((resp) => {
-            // TODO: Move this upstream
-            setCurrentToken(resp.authToken.token);
-
             events.trigger('g:navigateTo', RsvpUserView, {
                 user: getCurrentUser(),
                 token: token
@@ -81,44 +108,6 @@ router.route('user/:id/rsvp/:token', 'rsvpUser', (id, token) => {
             });
             router.navigate('', {trigger: true});
         });
-});
-
-import CreateDatasetRequestView from '../Datasets/CreateDatasetRequestView';
-function navigateToIfCanCreateDataset(View, settings) {
-    // Users must:
-    //  (1) Be logged in
-    //  (2) Accept the TOS
-    //  (3) Request and receive create dataset access
-    // before being able to see the create dataset view
-    let currentUser = getCurrentUser();
-    if (!currentUser) {
-        events.trigger('g:loginUi');
-    } else if (!currentUser.canAcceptTerms()) {
-        navigateTo(TermsAcceptanceView);
-    } else if (!DatasetModel.canCreate()) {
-        navigateTo(CreateDatasetRequestView);
-    } else {
-        navigateTo(View, settings);
-    }
-}
-
-// Front page
-router.route('', 'index', () => {
-    window.location.replace('https://www.isic-archive.com/');
-});
-
-// Old routes which may still be navigated to by views
-router.route('tasks', 'tasks', () => {
-    router.navigate('', {trigger: true, replace: true});
-});
-router.route('dataset', 'dataset', () => {
-    router.navigate('', {trigger: true, replace: true});
-});
-
-// Literature page
-import LiteratureView from '../Literature/LiteratureView';
-router.route('literature', 'literature', () => {
-    navigateTo(LiteratureView);
 });
 
 // Dataset
@@ -186,4 +175,12 @@ router.route('tasks/annotate/:id', 'annotate', (id) => {
             studyId: id
         }
     });
+});
+
+// Old routes which may still be navigated to by views
+router.route('tasks', 'tasks', () => {
+    router.navigate('', {trigger: true, replace: true});
+});
+router.route('dataset', 'dataset', () => {
+    router.navigate('', {trigger: true, replace: true});
 });

@@ -4,6 +4,20 @@ const webpack = require('webpack'); // eslint-disable-line import/no-extraneous-
 const autoprefixer = require('autoprefixer'); // eslint-disable-line import/no-extraneous-dependencies
 
 module.exports = {
+  publicPath: '/admin/',
+
+  pages: {
+    admin: {
+      entry: 'src/main.js',
+      title: 'ISIC Archive Admin',
+    },
+    integration: {
+      entry: 'src/integration/main.js',
+      title: 'ISIC Archive',
+    },
+  },
+
+
   lintOnSave: false,
 
   devServer: {
