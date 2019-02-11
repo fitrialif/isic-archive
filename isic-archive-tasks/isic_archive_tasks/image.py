@@ -20,9 +20,11 @@ SUPERPIXEL_VERSION = 3.0
 logger = get_task_logger(__name__)
 
 
-@app.task()
-def ingestImage(imageId):
+@app.task(bind=True)
+def ingestImage(self, imageId):
     from girder.plugins.isic_archive.models.image import Image
+    from girder.plugins.isic_archive.models.segmentation_helpers.scikit import \
+        ScikitSegmentationHelper
     image = Image().load(imageId, force=True)
 
     if image['ingested']:
@@ -30,7 +32,14 @@ def ingestImage(imageId):
         return
 
     try:
-        imageData = Image().imageData(image)
+        imageFile = Image().originalFile(image)
+        originalFileStreamResponse = self.session.get(
+            'file/%s/download' % imageFile['_id'])
+        originalFileStreamResponse.raise_for_status()
+        originalFileStreamResponse = io.BytesIO(originalFileStreamResponse.content)
+
+        # Scikit-Image is ~70ms faster at decoding image data
+        imageData = ScikitSegmentationHelper.loadImage(originalFileStreamResponse)
         image['meta']['acquisition']['pixelsY'] = imageData.shape[0]
         image['meta']['acquisition']['pixelsX'] = imageData.shape[1]
     except Exception:
