@@ -4,6 +4,8 @@ from girder.utility.config import getConfig
 
 developmentMode = getConfig()['server']['mode'] == 'development'
 
+s3Kwargs = {}
+
 if developmentMode:
     s3Kwargs = {
         'endpoint_url': 'http://localhost:4572',
